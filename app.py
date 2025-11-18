@@ -1,23 +1,34 @@
 from flask import Flask, request
 from datetime import datetime, timedelta
 import json
+import os
 
 app = Flask(__name__)
 
+# Загрузка пользователей из файла
 def load_users():
+    if not os.path.exists("users.json"):
+        return {}
     with open("users.json", "r") as f:
         return json.load(f)
 
+# Сохранение пользователей в файл
 def save_users(users):
     with open("users.json", "w") as f:
         json.dump(users, f, indent=2)
 
+# Главная страница — нужна для Render
+@app.route("/")
+def index():
+    return "VPN Webhook is running!"
+
+# Обработка уведомлений от GGKassa
 @app.route("/gk_callback", methods=["POST"])
 def gk_callback():
     data = request.json
-    if data["status"] == "paid":
-        order_id = data["order_id"]
-        amount = int(data["amount"])
+    if data and data.get("status") == "paid":
+        order_id = data.get("order_id", "")
+        amount = int(data.get("amount", 0))
         user_id = order_id.split("_")[0]
 
         tariffs = {
@@ -40,5 +51,6 @@ def gk_callback():
                 return "OK", 200
     return "Ignored", 200
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=10000)
+# Запуск сервера
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=10000)
